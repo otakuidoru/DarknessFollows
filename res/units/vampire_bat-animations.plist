@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>animations</key>
+	<dict>
+		<key>vampire_bat</key>
+		<dict>
+			<key>delayPerUnit</key>
+			<real>0.2</real>
+			<key>frames</key>
+			<array>
+				<dict>
+					<key>delayUnits</key>
+					<integer>1</integer>
+					<key>notification</key>
+					<dict>
+						<key>firstframe</key>
+						<true/>
+					</dict>
+					<key>spriteframe</key>
+					<string>vampire_bat1</string>
+				</dict>
+				<dict>
+					<key>delayUnits</key>
+					<integer>1</integer>
+					<key>notification</key>
+					<dict>
+						<key>lastframe</key>
+						<true/>
+					</dict>
+					<key>spriteframe</key>
+					<string>vampire_bat0</string>
+				</dict>
+			</array>
+			<key>loops</key>
+			<integer>1</integer>
+			<key>restoreOriginalFrame</key>
+			<true/>
+		</dict>
+	</dict>
+	<key>properties</key>
+	<dict>
+		<key>format</key>
+		<integer>2</integer>
+		<key>spritesheets</key>
+		<array>
+			<string>vampire_bat.plist</string>
+		</array>
+	</dict>
+</dict>
+</plist>
