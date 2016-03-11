@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SuperPixelDungonTreasureHunter Unit Tests</title>
+  <link rel="stylesheet" href="./qunit-1.19.0.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="./qunit-1.19.0.js"></script>
+  <script src="../src/utils/direction.js"></script>
+  <script src="../src/utils/mt.js"></script>
+  <script src="../src/utils/random_utils.js"></script>
+  <script src="../src/utils/big_integer.js"></script>
+  <script src="../src/utils/priority_queue.js"></script>
+  <script src="../src/dungeon/tile_type.js"></script>
+  <script src="../src/dungeon/pathfinder.js"></script>
+  <script>
+    QUnit.test( "a basic test example", function( assert ) {
+      var value = "hello";
+      assert.equal( value, "hello", "We expect value to be hello" );
+    });
+
+    //***** Test direction.js *****//
+    QUnit.test( "test directions", function( assert ) {
+      assert.equal( zp.Direction.NORTH, 0, "We expect value of zp.Direction.NORTH to be 0" );
+      assert.equal( zp.Direction.SOUTH, 1, "We expect value of zp.Direction.SOUTH to be 1" );
+      assert.equal( zp.Direction.WEST,  2, "We expect value of zp.Direction.WEST to be 2" );
+      assert.equal( zp.Direction.EAST,  3, "We expect value of zp.Direction.EAST to be 3" );
+    });
+
+    //***** Test big_integer.js *****//
+    QUnit.test( "test big_integer", function( assert ) {
+      assert.ok(
+        new BigIntegerPoint(new BigInteger(0), new BigInteger(0)).equals(new BigIntegerPoint(new BigInteger(0), new BigInteger(0))),
+        "We expect {0, 0} to equal {0, 0}"
+      );
+    });
+
+//   //***** Test priority_queue.js *****//
+//     QUnit.test( "test priority_queue", function( assert ) {
+//       var pq = new PriorityQueue(function(a, b){return a.f-b.f});
+//       assert.ok(
+//         pq.,
+//         "We expect the same"
+//       );
+//     });
+
+//     //***** Test pathfinder.js *****//
+//     QUnit.test( "test pathfinder", function( assert ) {
+//       var pathfinder = new Pathfinder();
+//       assert.equal(pathfinder.dist_between(new BigIntegerPoint(new BigInteger(0), new BigInteger(0)), new BigIntegerPoint(new BigInteger(0), new BigInteger(1))), 1, "We expect the distance to be 1");
+//       assert.equal(pathfinder.dist_between(new BigIntegerPoint(new BigInteger(0), new BigInteger(0)), new BigIntegerPoint(new BigInteger(1), new BigInteger(1))), Math.SQRT2, "We expect the distance to be Math.SQRT2");
+//       var start = new BigIntegerPoint(new BigInteger(0), new BigInteger(0));
+//       var goal = new BigIntegerPoint(new BigInteger(10), new BigInteger(10));
+//       assert.equal(pathfinder.heuristic_cost_estimate(start, goal), 20, "Bingo");
+//       var path = pathfinder.findPath(start, new BigIntegerPoint(new BigInteger(4), new BigInteger(4)));
+//       assert.equal( zp.Direction.NORTH, 1, "Path Length: " + path.length );
+//     });
+
+    //***** Test random_utils.js *****//
+    QUnit.test( "test random utils", function( assert ) {
+      var prng = new RandomUtils(42);
+      for (var i=0; i<10000; ++i) {
+        assert.ok(
+          prng.randomOddInt(10000) % 2 == 1,
+          "We expect value to be odd"
+        );
+      }
+    });
+
+    QUnit.test( "test random utils 2", function( assert ) {
+       var prng = new RandomUtils(42);
+       for (var i=0; i<10000; ++i) {
+         var n = prng.randomOddInt(0, 99, true);
+         assert.ok(
+           n % 2 == 1,
+           "We expect value to be odd"
+         );
+         assert.ok(
+           n < 99,
+           "We expect n to be exclusive"
+         );
+       }
+     });
+  </script>
+</body>
+</html>
