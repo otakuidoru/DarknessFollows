@@ -1,0 +1,878 @@
+/**
+ * @see http://silentmatt.com/biginteger-docs/files/biginteger-js.html#BigInteger.BigInteger
+ */
+var Level = cc.TMXTiledMap.extend({
+    prng:null,
+    tiles:[],
+    levelListeners:[],
+    player:null,
+    stairsUp:null,
+
+    /**
+     * @param num
+     */
+    ctor:function(num) {
+        // 1. initialize member variables
+
+        this.prng = new MersenneTwister19937();
+        this.prng.init_genrand((Dungeon.SEED + "" + num).hashCode());
+
+        this.tiles = [];
+        for (var i=0; i<Level.NUM_TILES; ++i) {
+            this.tiles.push(zp.TileType.EMPTY);
+        }
+
+        this.levelListeners = [];
+
+        // 2. create the room seeds
+
+//        var voronoi = new Voronoi();
+//        var sites = [];
+//        var bbox = {xl: 0, xr: Level.SIZE, yt: 0, yb: Level.SIZE}; // xl is x-left, xr is x-right, yt is y-top, and yb is y-bottom
+//        for (var i=0; i<15; ++i) {	// FIXME: random between something and something else
+//            var x = this.prng.genrand_int32() % Level.SIZE;
+//            var y = this.prng.genrand_int32() % Level.SIZE;
+//            sites.push({x:x, y:y});
+//        }
+//
+//        for (var i=0; i<2; ++i) {
+//        	voronoi.recycle(diagram);
+//            var diagram = voronoi.compute(sites, bbox);
+//            sites = [];
+//            for (var c=0; c<diagram.cells.length; ++c) {
+//                var xsum = 0;
+//                var ysum = 0;
+//                for (var e=0; e<diagram.cells[c].halfedges.length; ++e) {
+//                    xsum += diagram.cells[c].halfedges[e].getStartpoint().x;
+//                    ysum += diagram.cells[c].halfedges[e].getStartpoint().y;
+//                }
+//                sites.push({x:xsum/diagram.cells[c].halfedges.length, y:ysum/diagram.cells[c].halfedges.length});
+//            }
+//        }
+//
+//        for (var i=0; i<sites.length; ++i) {
+//            sites[i].x = Math.max(Math.min(parseInt(Math.floor(sites[i].x)), Level.SIZE-Level.BUFFER), Level.BUFFER);
+//            sites[i].y = Math.max(Math.min(parseInt(Math.floor(sites[i].y)), Level.SIZE-Level.BUFFER), Level.BUFFER);
+////            var node = new cc.DrawNode();
+////            node.drawDot(cc.p(sites[i].x, sites[i].y), 1.0, cc.color(255, 255, 255, 255));
+//            this.addChild(node);
+//        }
+
+        var entranceX = 8;//Math.max(Math.min(parseInt(Math.floor(sites[i].x)), Level.SIZE-Level.BUFFER), Level.BUFFER);
+        var entranceY = 8;//Math.max(Math.min(parseInt(Math.floor(sites[i].y)), Level.SIZE-Level.BUFFER), Level.BUFFER);
+        var entranceRoomWidth = this.getRandomInt(3, 5) * 2 + 1;	// FIXME
+        var entranceRoomHeight = this.getRandomInt(3, 5) * 2 + 1;	// FIXME
+//        cc.log("%s, %s", entranceRoomWidth, entranceRoomHeight);
+        for (var y=entranceY+Math.floor(-entranceRoomHeight/2); y<entranceY+Math.ceil(entranceRoomHeight/2); ++y) {
+            for (var x=entranceX+Math.floor(-entranceRoomWidth/2); x<entranceX+Math.ceil(entranceRoomWidth/2); ++x) {
+                this.setTile(x, y, zp.TileType.STONE_FLOOR);
+            }
+        }
+
+//        // 3. create the corridor sector exits
+//
+//        {	// find the exits for the east wall
+//            var eastWallSeedX = new String(this.sector_x.toString().hashCode() * this.sector_x.next().toString().hashCode()).hashCode();
+//            var eastWallSeedY = this.sector_y.toString().hashCode();
+//            var eastWallCorridorPrng = new MersenneTwister19937();
+//            eastWallCorridorPrng.init_genrand((Dungeon.SEED + eastWallSeedX + eastWallSeedY).hashCode());
+//
+//            for (var i=0; i<Sector.MAX_SECTOR_EXITS; ++i) {
+//                var corridorY = eastWallCorridorPrng.genrand_int32() % (Level.SIZE - 2) + 1;
+//                this.setTile(Level.SIZE-1, corridorY-1, zp.TileType.STONE_WALL);
+//                this.setTile(Level.SIZE-1, corridorY,   zp.TileType.STONE_FLOOR);
+//                this.setTile(Level.SIZE-1, corridorY+1, zp.TileType.STONE_WALL);
+//            }
+//        }{	// find the exits for the west wall
+//            var westWallSeedX = new String(this.sector_x.toString().hashCode() * this.sector_x.prev().toString().hashCode()).hashCode();
+//            var westWallSeedY = this.sector_y.toString().hashCode();
+//            var westWallCorridorPrng = new MersenneTwister19937();
+//            westWallCorridorPrng.init_genrand((Dungeon.SEED + westWallSeedX + westWallSeedY).hashCode());
+//
+//            for (var i=0; i<Sector.MAX_SECTOR_EXITS; ++i) {
+//                var corridorY = westWallCorridorPrng.genrand_int32() % (Level.SIZE - 2) + 1;
+//                this.setTile(0, corridorY-1, zp.TileType.STONE_WALL);
+//                this.setTile(0, corridorY,   zp.TileType.STONE_FLOOR);
+//                this.setTile(0, corridorY+1, zp.TileType.STONE_WALL);
+//            }
+//        }{	// find the exits for the north wall
+//            var northWallSeedX = this.sector_x.toString().hashCode();
+//            var northWallSeedY = new String(this.sector_y.toString().hashCode() * this.sector_y.next().toString().hashCode()).hashCode();
+//            var northWallCorridorPrng = new MersenneTwister19937();
+//            northWallCorridorPrng.init_genrand((Dungeon.SEED + northWallSeedX + northWallSeedY).hashCode());
+//
+//            for (var i=0; i<Sector.MAX_SECTOR_EXITS; ++i) {
+//                var corridorX = northWallCorridorPrng.genrand_int32() % (Level.SIZE - 2) + 1;
+//                this.setTile(corridorX-1, Level.SIZE-1, zp.TileType.STONE_WALL);
+//                this.setTile(corridorX,   Level.SIZE-1, zp.TileType.STONE_FLOOR);
+//                this.setTile(corridorX+1, Level.SIZE-1, zp.TileType.STONE_WALL);
+//            }
+//        }{	// find the exits for the south wall
+//            var southWallSeedX = this.sector_x.toString().hashCode();
+//            var southWallSeedY = new String(this.sector_y.toString().hashCode() * this.sector_y.prev().toString().hashCode()).hashCode();
+//            var southWallCorridorPrng = new MersenneTwister19937();
+//            southWallCorridorPrng.init_genrand((Dungeon.SEED + southWallSeedX + southWallSeedY).hashCode());
+//
+//            for (var i=0; i<Sector.MAX_SECTOR_EXITS; ++i) {
+//                var corridorX = southWallCorridorPrng.genrand_int32() % (Level.SIZE - 2) + 1;
+//                this.setTile(corridorX-1, 0, zp.TileType.STONE_WALL);
+//                this.setTile(corridorX,   0, zp.TileType.STONE_FLOOR);
+//                this.setTile(corridorX+1, 0, zp.TileType.STONE_WALL);
+//            }
+//        }
+
+        // build up the XML data
+        var xmlStr =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+        "<map version=\"1.0\" orientation=\"orthogonal\" renderorder=\"right-down\" width=\""+Level.SIZE+"\" height=\""+Level.SIZE+"\" tilewidth=\"25\" tileheight=\"25\" nextobjectid=\"1\">" +
+        " <tileset firstgid=\"1\" name=\"grid\" tilewidth=\"25\" tileheight=\"25\" tilecount=\"16\">" +
+        "  <image source=\"tiles_25x25.png\" width=\"100\" height=\"100\"/>" +
+        " </tileset>" +
+        " <layer name=\"Tile Layer 1\" width=\""+Level.SIZE+"\" height=\""+Level.SIZE+"\">" +
+        "  <data>";
+
+        for (var y=0; y<Level.SIZE; ++y) {
+            for (var x=0; x<Level.SIZE; ++x) {
+                xmlStr += "<tile gid=\""+this.getTile(x, y)+"\"/>";
+            }
+        }
+
+        xmlStr +=
+        "  </data>" +
+        " </layer>" +
+        "</map>";
+
+        this._super(xmlStr, "res");
+        this.setScale(Level.SCALE);
+
+        // add the return stairs (up)
+        this.stairsUp = new StairsUp();
+        this.addObjectAtTilePosition(8, 8, this.stairsUp);
+
+        var self = this;
+        // add touch recognizer
+        if ( true || 'touches' in cc.sys.capabilities ) { // touches work on mac but return false
+            cc.eventManager.addListener(cc.EventListener.create({
+                event: cc.EventListener.TOUCH_ALL_AT_ONCE,
+                onTouchesBegan: function(touches, event) {
+                    console.log("onTouchesBegan!");
+
+                    var touch = touches[0];
+                    var loc = touch.getLocation();
+
+                    self.touchStartPoint = {
+                        x: loc.x,
+                        y: loc.y
+                    };
+
+                    self.touchLastPoint = {
+                        x: loc.x,
+                        y: loc.y
+                    };
+                },
+
+                onTouchesMoved: function(touches, event) {
+                    var touch = touches[0];
+                    var loc = touch.getLocation(),
+                        start = self.touchStartPoint;
+
+                    // check for left
+                    if ( loc.x < start.x - self.touchThreshold ) {
+                        // if direction changed while swiping left, set new base point
+                        if ( loc.x > self.touchLastPoint.x ) {
+                            start = self.touchStartPoint = {
+                                x: loc.x,
+                                y: loc.y
+                            };
+                            self.isSwipeLeft = false;
+                        } else {
+                            self.isSwipeLeft = true;
+                        }
+                    }
+
+                    // check for right
+                    if ( loc.x > start.x + self.touchThreshold ) {
+                        // if direction changed while swiping right, set new base point
+                        if ( loc.x < self.touchLastPoint.x ) {
+                            self.touchStartPoint = {
+                                x: loc.x,
+                                y: loc.y
+                            };
+                            self.isSwipeRight = false;
+                        } else {
+                            self.isSwipeRight = true;                       
+                        }
+                    }
+
+                    // check for down
+                    if ( loc.y < start.y - self.touchThreshold ) {
+                        // if direction changed while swiping down, set new base point
+                        if ( loc.y > self.touchLastPoint.y ) {
+                            self.touchStartPoint = {
+                                x: loc.x,
+                                y: loc.y
+                            };
+                            self.isSwipeDown = false;
+                        } else {
+                            self.isSwipeDown = true;                        
+                        }
+                    }
+
+                    // check for up
+                    if ( loc.y > start.y + self.touchThreshold ) {
+                        // if direction changed while swiping right, set new base point
+                        if ( loc.y < self.touchLastPoint.y ) {
+                            self.touchStartPoint = {
+                                x: loc.x,
+                                y: loc.y
+                            };
+                            self.isSwipeUp = false;
+                        } else {
+                            self.isSwipeUp = true;                      
+                        }
+                    }
+
+                    self.touchLastPoint = {
+                        x: loc.x,
+                        y: loc.y
+                    };
+                },
+
+                onTouchesEnded: function(touches, event) {
+                    console.log("onTouchesEnded!");
+
+                    var touch = touches[0],
+                        loc = touch.getLocation()
+                        size = cc.winSize;
+
+                    self.touchStartPoint = null;
+
+                    if ( !self.isSwipeUp && !self.isSwipeLeft && !self.isSwipeRight && !self.isSwipeDown ) {
+                        if ( loc.y > size.height*0.25 && loc.y < size.height*0.75 ) {
+                            (loc.x < size.width*0.50)? self.isTouchLeft = true : self.isTouchRight = true;
+                        } else if ( loc.y > size.height*0.75 ) {
+                            self.isTouchUp = true;
+                        } else {
+                            self.isTouchDown = true;
+                        }
+                    }
+
+                    if (self.isSwipeLeft) {
+                        cc.log("swipe left");
+                    } else if (self.isSwipeRight) {
+                        cc.log("swipe right");
+                    } else if (self.isSwipeUp) {
+                        cc.log("swipe up");
+//                        // the animation is contained in the .c3b file
+//                        var animation = jsb.Animation3D.create("res/chain.c3b");
+//                        if (animation) {
+//                            cc.log("animation");
+//                            var animate = jsb.Animate3D.create(animation);
+//                            animate.setSpeed(10);
+//                            chain.runAction(animate);
+//                            cc.log("here");
+//                        } else {
+//                            cc.log("no animation");
+//                        }
+                    } else if (self.isSwipeDown) {
+                        cc.log("swipe down");
+                    } else {
+                        cc.log("just a touch");
+//                        self.onTouch(touch.getLocation());
+                        var loc = self.convertTouchToNodeSpace(touch);
+                        var tileCoords = self.getTileCoordsForLocation(loc);
+                        var gid = self.getTileGIDForLocation(loc);
+                        cc.log("Clicked tile [%s, %s] of type [%s]", tileCoords.x, tileCoords.y, gid);
+                        if (zp.TileType.isWalkable(gid)) {
+                            // @see https://github.com/qiao/PathFinding.js/
+                            var grid = new Grid(Level.SIZE, Level.SIZE);
+                            var pathfinder = new AStarFinder();
+                            cc.log("%s, %s", self.player.getPosition().x, self.player.getPosition().y);
+                            var fromTileCoords = self.getTileCoordsForLocation(self.player.getPosition());
+                            var toTileCoords = self.getTileCoordsForLocation(loc);
+                            var path = pathfinder.findPath(fromTileCoords.x, fromTileCoords.y, toTileCoords.x, toTileCoords.y, grid);
+                            var actions = [];
+                            // TODO: remove
+                            for (var i=0; i<path.length; ++i) {
+                                cc.log("%s", path[i]);
+                            }
+                            for (var i=0; i<path.length; ++i) {
+                                var tile = self.allLayers()[0].getTileAt(cc.p(path[i][0], path[i][1]));
+                                var actionMove = cc.MoveTo.create(0.75, cc.p(tile.getPosition().x, tile.getPosition().y));
+                                actions.push(actionMove);
+                            }
+                            actions.push(cc.callFunc(function(){
+                                cc.log("%s, %s", toTileCoords.x * Level.TILE_SIZE, toTileCoords.y * Level.TILE_SIZE);
+                                self.player.setPosition(toTileCoords.x * Level.TILE_SIZE, toTileCoords.y * Level.TILE_SIZE);
+                                cc.log("done");
+                            }, this));
+                            self.player.runAction(new cc.Sequence(actions));
+                        }
+                    }
+
+                    self.isSwipeUp = self.isSwipeLeft = self.isSwipeRight = self.isSwipeDown = false;
+                }
+            }), this);
+        } else {
+            cc.log("TOUCH_ALL_AT_ONCE is not supported");
+        }
+
+        return true;
+    },
+
+    /**
+     * @param path
+     */
+    smoothPath:function(path) {
+        for (var i=0; i<path.length-2; ++i) {
+            
+        }
+        return path;
+    },
+
+    /**
+     * Returns a random integer between min (inclusive) and max (inclusive)
+     * Using Math.round() will give you a non-uniform distribution!
+     */
+    getRandomInt:function(min, max) {
+        return Math.floor(this.prng.genrand_res53() * (max - min + 1)) + min;
+    },
+
+    /**
+     * @param x
+     * @param y
+     */
+    getTile:function(x, y) {
+        return this.tiles[y * Level.SIZE + x];
+    },
+
+    /**
+     * @param x
+     * @param y
+     * @param val
+     */
+    setTile:function(x, y, val) {
+        this.tiles[y * Level.SIZE + x] = val;
+    },
+
+    /**
+     * @param tile_x
+     * @param tile_y
+     * @param obj
+     */
+    addObjectAtTilePosition:function(tile_x, tile_y, obj) {
+//        var tile = this.getTileForLocation(tile_x, tile_y);
+        obj.attr({
+            x:tile_x * Level.TILE_SIZE,
+            y:tile_y * Level.TILE_SIZE
+        });
+        this.addChild(obj);
+    },
+
+    /**
+     * 
+     */
+    setPlayer:function(player) {
+        this.player = player;
+        this.player.attr({
+            x:this.stairsUp.x,
+            y:this.stairsUp.y
+        });
+        this.addChild(this.player);
+    },
+
+    /**
+     * 
+     */
+    fireEnteredLevel:function() {
+        for (var i=0; i<this.levelListeners.length; ++i) {
+            this.levelListeners[i](this);
+        }
+    },
+
+    /**
+     * 
+     */
+    fireExitedLevel:function() {
+        for (var i=0; i<this.levelListeners.length; ++i) {
+            this.levelListeners[i](this);
+        }
+    },
+
+    /**
+     * @param loc
+     */
+    onTouch:function(loc) {
+        var tileCoords = this.getTileCoordsForLocation(loc);
+        var gid = this.getTileGIDForLocation(loc);
+        cc.log("Clicked tile [%s, %s] of type [%s]", tileCoords.x, tileCoords.y, gid);
+        if (zp.TileType.isWalkable(gid)) {
+            // @see https://github.com/qiao/PathFinding.js/
+            var grid = new Grid(Level.SIZE, Level.SIZE);
+            var pathfinder = new AStarFinder();
+            var fromTileCoords = this.getTileCoordsForLocation(this.player.getPosition());
+            var toTileCoords = this.getTileCoordsForLocation(loc);
+            var path = pathfinder.findPath(fromTileCoords.x, fromTileCoords.y, toTileCoords.x, toTileCoords.y, grid);
+            var actions = [];
+            // TODO: remove
+            for (var i=0; i<path.length; ++i) {
+                cc.log("%s", path[i]);
+            }
+            for (var i=0; i<path.length; ++i) {
+                var tile = this.allLayers()[0].getTileAt(cc.p(path[i][0], path[i][1]));
+                var actionMove = cc.MoveTo.create(0.75, cc.p(tile.getPosition().x, tile.getPosition().y));
+                actions.push(actionMove);
+            }
+            this.player.runAction(new cc.Sequence(actions));
+        }
+    },
+
+    /**
+     * @param loc
+     * @returns
+     */
+    getTileForLocation:function(loc) {
+        var x = Math.floor(loc.x/Level.TILE_SIZE);
+        var y = Level.SIZE - 1 - Math.floor(loc.y/Level.TILE_SIZE);
+        return this.allLayers()[0].getTileAt(cc.p(x, y));
+    },
+
+    /**
+     * @param loc
+     * @returns
+     */
+    getTileCoordsForLocation:function(loc) {
+        var x = Math.floor(loc.x/Level.TILE_SIZE);
+        var y = Level.SIZE - 1 - Math.floor(loc.y/Level.TILE_SIZE);
+        return cc.p(x, y);
+    },
+
+    /**
+     * @param loc
+     * @returns
+     */
+    getTileGIDForLocation:function(loc) {
+        var x = Math.floor(loc.x/Level.TILE_SIZE);
+        var y = Level.SIZE - 1 - Math.floor(loc.y/Level.TILE_SIZE);
+        return this.allLayers()[0].getTileGIDAt(cc.p(x, y));
+    }
+});
+
+Level.SIZE = 16;	// Levels are 16 tiles x 16 tiles
+Level.NUM_TILES = Level.SIZE * Level.SIZE;
+Level.BUFFER = 11;	// Levels have a curtain/buffer of 11 tiles
+//Level.MAX_SECTOR_EXITS = Math.max(Level.SIZE / 32, 1);
+
+Level.SCALE = 2;
+Level.TILE_SIZE = 25;
+// so the effective size of a tile will be X pixels
+
+
+
+
+//// 2. Dig out a single room in the centre of the map
+//var firstRoomWidth = this.prng.randomInt(5, 11);
+//var firstRoomHeight = this.prng.randomInt(5, 11);
+//var firstRoomX = Math.floor(Level.SIZE/2) - Math.floor(firstRoomWidth/2);
+//var firstRoomY = Math.floor(Level.SIZE/2) - Math.floor(firstRoomHeight/2);
+//for (var i=firstRoomX; i<firstRoomX+firstRoomWidth; ++i) {
+//  for (var j=firstRoomY; j<firstRoomY+firstRoomHeight; ++j) {
+//      grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//  }
+//}
+//
+//for (var n=0; n<10; ++n) {
+//  // 3. Pick a wall of any room
+//  var nextFeatureCoords = null;
+//  var nextFeatureDir = null;
+//  while (true) {
+//	    nextFeatureCoords = cc.p(this.prng.randomInt(1, Level.SIZE-1, true), this.prng.randomInt(1, Level.SIZE-1, true));
+//	    if (zp.DungeonTileType.isFloor(grid[nextFeatureCoords.x][nextFeatureCoords.y])) {
+//	        if (zp.DungeonTileType.isEmpty(grid[nextFeatureCoords.x][nextFeatureCoords.y-1])) {
+//	    	    nextFeatureCoords = cc.p(nextFeatureCoords.x, nextFeatureCoords.y-1);
+//              nextFeatureDir = zp.Direction.NORTH;
+//	            break;
+//	        }
+//	        if (zp.DungeonTileType.isEmpty(grid[nextFeatureCoords.x][nextFeatureCoords.y+1])) {
+//	            nextFeatureCoords = cc.p(nextFeatureCoords.x, nextFeatureCoords.y+1);
+//              nextFeatureDir = zp.Direction.SOUTH;
+//	            break;
+//	        }
+//          if (zp.DungeonTileType.isEmpty(grid[nextFeatureCoords.x-1][nextFeatureCoords.y])) {
+//	            nextFeatureCoords = cc.p(nextFeatureCoords.x-1, nextFeatureCoords.y);
+//	            nextFeatureDir = zp.Direction.WEST;
+//              break;
+//          }
+//   	    if (zp.DungeonTileType.isEmpty(grid[nextFeatureCoords.x+1][nextFeatureCoords.y])) {
+//  	    	nextFeatureCoords = cc.p(nextFeatureCoords.x+1, nextFeatureCoords.y);
+//	            nextFeatureDir = zp.Direction.EAST;
+//	            break;
+//  	    }
+//  	}
+//  }
+//
+//  // 4. Decide upon a new feature to build
+////  var percentage = this.prng.randomInt(100);
+////  if () {
+////  
+////  }
+//
+//  switch (this.prng.randomInt(2)) {
+//      case 0: {	// Corridor
+//          const minCorridorLength = 3;
+//          const maxCorridorLength = 7;
+//          var featureLength = this.prng.randomInt(minCorridorLength, maxCorridorLength, true);
+//          switch (nextFeatureDir) {
+//              case zp.Direction.NORTH: {
+//                  var featureRect = cc.rect(nextFeatureCoords.x, nextFeatureCoords.y-featureLength+1, 3, featureLength);
+//                  if (this.isAreaClearForFeature(featureRect, grid)) {
+//                      cc.log("building corridor north of length %s", featureLength);
+//                      cc.log("at rect (%s, %s, %s, %s)", featureRect.x, featureRect.y, featureRect.x, featureRect.y+featureRect.height);
+//                      for (var i=featureRect.x; i<featureRect.x+featureRect.width-2; ++i) {
+//                          for (var j=featureRect.y; j<featureRect.y+featureRect.height; ++j) {
+//                              grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//                          }
+//                      }
+//                  }
+//              } break;
+//              case zp.Direction.SOUTH: {
+//                  var featureRect = cc.rect(nextFeatureCoords.x, nextFeatureCoords.y, 3, featureLength);
+//                  if (this.isAreaClearForFeature(featureRect, grid)) {
+//                      cc.log("building corridor south of length %s", featureLength);
+//                      cc.log("at rect (%s, %s, %s, %s)", featureRect.x, featureRect.y, featureRect.x, featureRect.y+featureRect.height);
+//                      for (var i=featureRect.x; i<featureRect.x+featureRect.width-2; ++i) {
+//                          for (var j=featureRect.y; j<featureRect.y+featureRect.height; ++j) {
+//                              grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//                          }
+//                      }
+//                  }
+//              } break;
+//              case zp.Direction.WEST: {
+//                  var featureRect = cc.rect(nextFeatureCoords.x-featureLength+1, nextFeatureCoords.y, featureLength, 3);
+//                  if (this.isAreaClearForFeature(featureRect, grid)) {
+//                      cc.log("building corridor west of length %s", featureLength);
+//                      cc.log("at rect (%s, %s, %s, %s)", featureRect.x, featureRect.y, featureRect.x+featureRect.width, featureRect.y);
+//                      for (var i=featureRect.x; i<featureRect.x+featureRect.width; ++i) {
+//                          for (var j=featureRect.y; j<featureRect.y+featureRect.height-2; ++j) {
+//                              grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//                          }
+//                      }
+//                  }
+//              } break;
+//              case zp.Direction.EAST: {
+//                  var featureRect = cc.rect(nextFeatureCoords.x, nextFeatureCoords.y, featureLength, 3);
+//                  if (this.isAreaClearForFeature(featureRect, grid)) {
+//                      cc.log("building corridor east of length %s", featureLength);
+//                      cc.log("at rect (%s, %s, %s, %s)", featureRect.x, featureRect.y, featureRect.x+featureRect.width, featureRect.y);
+//                      for (var i=featureRect.x; i<featureRect.x+featureRect.width; ++i) {
+//                          for (var j=featureRect.y; j<featureRect.y+featureRect.height-2; ++j) {
+//                              grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//                          }
+//                      }
+//                  }
+//              } break;
+//          }
+//      } break;
+//      case 1: {	// Room
+//          var featureWidth = this.prng.randomInt(5, 9, true);
+//          var featureHeight = this.prng.randomInt(5, 9, true);
+//          var featureRect = null;
+//          switch (nextFeatureDir) {
+//              case zp.Direction.NORTH: {
+//                  featureRect = cc.rect(
+//                      nextFeatureCoords.x-Math.floor(featureWidth/2),
+//                      nextFeatureCoords.y-featureHeight,
+//                      featureWidth,
+//                      featureHeight
+//                  );
+//              } break;
+//              case zp.Direction.SOUTH: {
+//                  featureRect = cc.rect(
+//                      nextFeatureCoords.x-Math.floor(featureWidth/2),
+//                      nextFeatureCoords.y+1,
+//                      featureWidth,
+//                      featureHeight
+//                  );
+//              } break;
+//              case zp.Direction.WEST: {
+//                  featureRect = cc.rect(
+//                      nextFeatureCoords.x-featureWidth,
+//                      nextFeatureCoords.y-Math.floor(featureHeight/2),
+//                      featureWidth,
+//                      featureHeight
+//                  );
+//              } break;
+//              case zp.Direction.EAST: {
+//                  featureRect = cc.rect(
+//                      nextFeatureCoords.x+1,
+//                      nextFeatureCoords.y-Math.floor(featureHeight/2),
+//                      featureWidth,
+//                      featureHeight
+//                  );
+//              } break;
+//          }
+//
+//          if (this.isAreaClearForFeature(featureRect, grid)) {
+//              for (var i=featureRect.x+1; i<featureRect.x+featureRect.width-1; ++i) {
+//                  for (var j=featureRect.y+1; j<featureRect.y+featureRect.height-1; ++j) {
+//                      grid[i][j] = zp.DungeonTileType.STONE_FLOOR;
+//                  }
+//              }
+//          }
+//          grid[nextFeatureCoords.x][nextFeatureCoords.y] = zp.DungeonTileType.STONE_FLOOR;
+//      }
+//  }
+//
+////  for (var j=0; j<Level.SIZE; ++j) {
+////      cc.log("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
+////          grid[0][j], grid[1][j], grid[2][j], grid[3][j], grid[4][j], grid[5][j], grid[6][j], grid[7][j], grid[8][j], grid[9][j],
+////          grid[10][j], grid[11][j], grid[12][j], grid[13][j], grid[14][j], grid[15][j], grid[16][j], grid[17][j], grid[18][j], grid[19][j],
+////          grid[20][j], grid[21][j], grid[22][j], grid[23][j], grid[24][j], grid[25][j], grid[26][j], grid[27][j], grid[28][j], grid[29][j],
+////          grid[30][j]);
+////  }
+//}
+
+// @see http://www.brainycode.com/downloads/RandomDungeonGenerator.pdf
+// 1. create a maze
+
+//function Corridor(px, py) {
+//  this.p0 = cc.p(px, py);
+//};
+//
+//var visitedGrid = [];
+//for (var i=0; i<Math.floor(Level.SIZE/2); ++i) {
+//  visitedGrid[i] = [];
+//  for (var j=0; j<Math.floor(Level.SIZE/2); ++j) {
+//      visitedGrid[i][j] = {};
+//      visitedGrid[i][j].visited = false;
+//      visitedGrid[i][j].corridors = new Map();
+//  }
+//}
+//
+//var currentCell = cc.p(this.prng.randomInt(Math.floor(Level.SIZE/2)), this.prng.randomInt(Math.floor(Level.SIZE/2)));
+//visitedGrid[currentCell.x][currentCell.y] = true;
+//while (!this.isAllTilesVisited(visitedGrid)) {
+//  // pick a random direction
+//  var directionArray = this.prng.shuffleArray([zp.Direction.NORTH, zp.Direction.SOUTH, zp.Direction.WEST, zp.Direction.EAST]);
+//  for (var i=0; i<directionArray.length; ++i) {
+//      if (directionArray[i] == zp.Direction.NORTH && currentCell.y > 1) {
+//          visitedGrid[currentCell.x][currentCell.y-1].visited = true;
+//          visitedGrid[currentCell.x][currentCell.y-1].corridors.set(
+//              zp.Direction.NORTH,
+//              new Corridor(currentCell.x, currentCell.y-1)
+//          );
+//          visitedGrid[currentCell.x][currentCell.y].corridors.set(
+//              zp.Direction.SOUTH,
+//              new Corridor(currentCell.x, currentCell.y-1)
+//          );
+//          currentCell = cc.p(currentCell.x, currentCell.y-1);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.SOUTH && currentCell.y < Math.floor(Level.SIZE/2)-1) {
+//          visitedGrid[currentCell.x][currentCell.y+1].visited = true;
+//          visitedGrid[currentCell.x][currentCell.y+1].corridors.set(
+//              zp.Direction.SOUTH,
+//              new Corridor(currentCell.x, currentCell.y+1)
+//          );
+//          currentCell = cc.p(currentCell.x, currentCell.y+1);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.WEST && currentCell.x > 1) {
+//          visitedGrid[currentCell.x-1][currentCell.y].visited = true;
+//          visitedGrid[currentCell.x-1][currentCell.y].corridors.set(
+//              zp.Direction.WEST,
+//              new Corridor(currentCell.x-1, currentCell.y)
+//          );
+//          currentCell = cc.p(currentCell.x-1, currentCell.y);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.EAST && currentCell.x < Math.floor(Level.SIZE/2)-1) {
+//          visitedGrid[currentCell.x+1][currentCell.y].visited = true;
+//          visitedGrid[currentCell.x+1][currentCell.y].corridors.set(
+//              zp.Direction.EAST,
+//              new Corridor(currentCell.x+1, currentCell.y)
+//          );
+//          currentCell = cc.p(currentCell.x+1, currentCell.y);
+//          break;
+//      }
+//
+//      if (i == directionArray.length-1) { // no direction was valid
+//          // pick a different random visited cell
+//          do {
+//              currentCell = cc.p(this.prng.randomInt(Math.floor(Level.SIZE/2)), this.prng.randomInt(Math.floor(Level.SIZE/2)));
+//          } while (!visitedGrid[currentCell.x][currentCell.y]);
+//      }
+//  }
+//}
+//
+//// 2. sparsify the maze
+//
+//for (var n=0; n<Level.SPARSIFY_NUM; ++n) {
+//  for (var i=1; i<Math.floor(Level.SIZE/2)-1; ++i) {
+//      for (var j=1; j<Math.floor(Level.SIZE/2)-1; ++j) {
+//          for (c=0; c<visitedGrid[i][j].corridors.length; ++c) {
+//              visitedGrid[i][j].corridors[c]
+//          }
+//
+//          if (this.getNumCellExits(visitedGrid, i, j) == 1) {	// is this a dead end (i.e. only one direction)?
+//              visitedGrid[i][j] = false;
+//          }
+//      }
+//  }
+//}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+//// @see http://www.brainycode.com/downloads/RandomDungeonGenerator.pdf
+//// 1. create a maze
+//
+//var visitedGrid = [];
+//for (var i=0; i<Level.SIZE; ++i) {
+//  visitedGrid[i] = [];
+//  for (var j=0; j<Level.SIZE; ++j) {
+//      visitedGrid[i][j] = false;
+//  }
+//}
+//var visitedGridMap = new Map();
+//
+//var currentCell = cc.p(this.prng.randomOddInt(1, Level.SIZE-1), this.prng.randomOddInt(1, Level.SIZE-1));
+//visitedGrid[currentCell.x][currentCell.y] = true;
+//while (!this.isAllTilesVisited(visitedGrid)) {
+//  var directionArray = this.prng.shuffleArray([zp.Direction.NORTH, zp.Direction.SOUTH, zp.Direction.WEST, zp.Direction.EAST]);
+//  for (var i=0; i<4; ++i) {
+//      if (directionArray[i] == zp.Direction.NORTH && (currentCell.y > 1 && !visitedGrid[currentCell.x][currentCell.y-2])) {
+//          visitedGrid[currentCell.x][currentCell.y-1] = true;
+//          visitedGrid[currentCell.x][currentCell.y-2] = true;
+//          currentCell = cc.p(currentCell.x, currentCell.y-2);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.SOUTH && (currentCell.y < Level.SIZE-2 && !visitedGrid[currentCell.x][currentCell.y+2])) {
+//          visitedGrid[currentCell.x][currentCell.y+1] = true;
+//          visitedGrid[currentCell.x][currentCell.y+2] = true;
+//          currentCell = cc.p(currentCell.x, currentCell.y+2);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.WEST && (currentCell.x > 1 && !visitedGrid[currentCell.x-2][currentCell.y])) {
+//          visitedGrid[currentCell.x-1][currentCell.y] = true;
+//          visitedGrid[currentCell.x-2][currentCell.y] = true;
+//          currentCell = cc.p(currentCell.x-2, currentCell.y);
+//          break;
+//      }
+//      if (directionArray[i] == zp.Direction.EAST && (currentCell.x < Level.SIZE-2 && !visitedGrid[currentCell.x+2][currentCell.y])) {
+//          visitedGrid[currentCell.x+1][currentCell.y] = true;
+//          visitedGrid[currentCell.x+2][currentCell.y] = true;
+//          currentCell = cc.p(currentCell.x+2, currentCell.y);
+//          break;
+//      }
+//
+//      if (i == 3) { // no direction was valid
+//          // pick a different random visited cell
+//          do {
+//              currentCell = cc.p(this.prng.randomOddInt(1, Level.SIZE-2), this.prng.randomOddInt(1, Level.SIZE-2));
+//          } while (!visitedGrid[currentCell.x][currentCell.y]);
+//      }
+//  }
+//}
+//
+//// 2. sparsify the maze
+//
+//for (var n=0; n<Level.SPARSIFY_NUM; ++n) {
+//  for (var i=0; i<Level.SIZE-1; ++i) {
+//      for (var j=0; j<Level.SIZE-1; ++j) {
+//          // check all directions
+//          var connectedDirections = [];
+//          if (visitedGrid[i][j]) {
+//              if (j > 1 && visitedGrid[i][j-1]) {
+//                  connectedDirections.push(zp.Direction.NORTH);
+//              }
+//              if (j < Level.SIZE-2 && visitedGrid[i][j+1]) {
+//                  connectedDirections.push(zp.Direction.SOUTH);
+//              }
+//              if (i > 1 && visitedGrid[i-1][j]) {
+//                  connectedDirections.push(zp.Direction.WEST);
+//              }
+//              if (i < Level.SIZE-2 && visitedGrid[i+1][j]) {
+//                  connectedDirections.push(zp.Direction.EAST);
+//              }
+//          }
+//
+//          if (connectedDirections.length == 1) {	// is this a dead end?
+//              visitedGrid[i][j] = false;
+//          }
+//      }
+//  }
+//}
+//
+//// 3. dead-end removal
+//
+//for (var i=1; i<Level.SIZE-2; i+=2) {
+//  for (var j=1; j<Level.SIZE-2; j+=2) {
+//      if (visitedGrid[i][j]) {
+//          // check all directions
+//          var connectedDirections = [];
+//          if (j > 1 && visitedGrid[i][j-1]) {
+//              connectedDirections.push(zp.Direction.NORTH);
+//          }
+//          if (j < Level.SIZE-2 && visitedGrid[i][j+1]) {
+//              connectedDirections.push(zp.Direction.SOUTH);
+//          }
+//          if (i > 1 && visitedGrid[i-1][j]) {
+//              connectedDirections.push(zp.Direction.WEST);
+//          }
+//          if (i < Level.SIZE-2 && visitedGrid[i+1][j]) {
+//              connectedDirections.push(zp.Direction.EAST);
+//          }
+//
+//          if (connectedDirections.length == 1 && this.prng.randomInt(100) <= Level.DEAD_END_REMOVAL) {	// is this a dead end?
+//              var currentCell = cc.p(i, j);
+//              var done = false;
+//              while (!done) {
+//                  var directionArray = [];
+//                  if (connectedDirections[0] == zp.Direction.NORTH) {
+//                      directionArray.push(zp.Direction.SOUTH, zp.Direction.WEST, zp.Direction.EAST);
+//                  }
+//                  if (connectedDirections[0] == zp.Direction.SOUTH) {
+//                      directionArray.push(zp.Direction.NORTH, zp.Direction.WEST, zp.Direction.EAST);
+//                  }
+//                  if (connectedDirections[0] == zp.Direction.WEST) {
+//                      directionArray.push(zp.Direction.NORTH, zp.Direction.SOUTH, zp.Direction.EAST);
+//                  }
+//                  if (connectedDirections[0] == zp.Direction.EAST) {
+//                      directionArray.push(zp.Direction.NORTH, zp.Direction.SOUTH, zp.Direction.WEST);
+//                  }
+//                  var directionArray = this.prng.shuffleArray(directionArray);
+//                  for (var n=0; n<directionArray.length; ++n) {
+//                      if (directionArray[n] == zp.Direction.NORTH && currentCell.y > 1) {
+//                          visitedGrid[currentCell.x][currentCell.y-1] = true;
+//                          visitedGrid[currentCell.x][currentCell.y-2] = true;
+//                          currentCell = cc.p(currentCell.x, currentCell.y-2);
+//                          done = visitedGrid[currentCell.x][currentCell.y];
+//                          break;
+//                      }
+//                      if (directionArray[n] == zp.Direction.SOUTH && currentCell.y < Level.SIZE-2) {
+//                          visitedGrid[currentCell.x][currentCell.y+1] = true;
+//                          visitedGrid[currentCell.x][currentCell.y+2] = true;
+//                          currentCell = cc.p(currentCell.x, currentCell.y+2);
+//                          done = visitedGrid[currentCell.x][currentCell.y];
+//                          break;
+//                      }
+//                      if (directionArray[n] == zp.Direction.WEST && currentCell.x > 1) {
+//                          visitedGrid[currentCell.x-1][currentCell.y] = true;
+//                          visitedGrid[currentCell.x-2][currentCell.y] = true;
+//                          currentCell = cc.p(currentCell.x-2, currentCell.y);
+//                          done = visitedGrid[currentCell.x][currentCell.y];
+//                          break;
+//                      }
+//                      if (directionArray[n] == zp.Direction.EAST && currentCell.x < Level.SIZE-2) {
+//                          visitedGrid[currentCell.x+1][currentCell.y] = true;
+//                          visitedGrid[currentCell.x+2][currentCell.y] = true;
+//                          currentCell = cc.p(currentCell.x+2, currentCell.y);
+//                          done = visitedGrid[currentCell.x][currentCell.y];
+//                          break;
+//                      }
+//                  }
+//              }
+//          }
+//      }
+//  }
+//}
